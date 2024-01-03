@@ -100,6 +100,7 @@ third_party/nextpnr
 third_party/prjoxide
 third_party/usr/local
 third_party/yosys
+/third_party/
 
 # Environment
 env
