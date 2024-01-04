@@ -1,7 +1,7 @@
 `timescale 1ns/10ps
 // `include "/home/kie/MyProjects/aaml/CFU-Playground/proj/lab5/RTL/TPU.v"
-`include "/home/kie/MyProjects/aaml/CFU-Playground/proj/lab5/RTL/systolic.v"
-`include "/home/kie/MyProjects/aaml/CFU-Playground/proj/lab5/RTL/global_buffer.v"
+`include "/home/kie/MyProjects/aaml/aaml-final-project/proj/AAML_final_proj/RTL/systolic.v"
+`include "/home/kie/MyProjects/aaml/aaml-final-project/proj/AAML_final_proj/RTL/global_buffer.v"
 
 // Copyright 2021 The CFU-Playground Authors
 //
