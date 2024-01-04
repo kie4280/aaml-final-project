@@ -1,5 +1,5 @@
 /* C array created from file src/tiny/v0.1/training/image_classification/trained_models/pretrainedResnet_quant.tflite.*/
-#include "tiny/v0.1/training/image_classification/trained_models/pretrainedResnet_quant.h"
+#include "pretrainedResnet_quant.h"
 
 const unsigned char pretrainedResnet_quant[] = {
 	0x1c, 0x00, 0x00, 0x00, 0x54, 0x46, 0x4c, 0x33, 0x00, 0x00, 0x12, 0x00,
