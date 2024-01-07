@@ -17,7 +17,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-module Cfu (
+module Cfu 
+#(parameter A_depth=14, parameter B_depth=14, parameter C_depth=2,
+  parameter A_bits=8, parameter B_bits=9)
+(
   input               cmd_valid,
   output              cmd_ready,
   input      [9:0]    cmd_payload_function_id,
@@ -30,37 +33,37 @@ module Cfu (
   input               clk
 );
 
-  wire            batch_mode;
+  wire                batch_mode;
 
-  reg             A_wr_en = 0;
-  wire [15:0]     A_index_w;
-  wire [31:0]     A_data_out;
-  reg  [31:0]     A_data_in;
+  reg                 A_wr_en = 0;
+  wire [A_depth+1:0]  A_index_w;
+  wire [31:0]         A_data_out;
+  reg  [31:0]         A_data_in;
 
-  reg             B_wr_en = 0;
-  wire [15:0]     B_index_w;
-  wire [31:0]     B_data_out;
-  reg  [31:0]     B_data_in;
+  reg                 B_wr_en = 0;
+  wire [B_depth+1:0]  B_index_w;
+  wire [35:0]         B_data_out;
+  reg  [35:0]         B_data_in;
 
-  wire            C_wr_en;
-  wire [15:0]     C_index_w;
-  wire [127:0]    C_data_out;
-  wire [127:0]    C_data_in;
+  wire                C_wr_en;
+  wire [C_depth+1:0]  C_index_w;
+  wire [127:0]        C_data_out;
+  wire [127:0]        C_data_in;
 
-  reg             TPU_enable = 0;
-  wire [15:0]     K;
-  wire            TPU_busy;
+  reg                 TPU_enable = 0;
+  wire [15:0]         K;
+  wire                TPU_busy;
 
-  reg  [15:0]     A_index_CFU = 0;
-  reg  [15:0]     B_index_CFU = 0;
-  reg  [15:0]     C_index_CFU = 0;
+  reg  [A_depth+1:0]  A_index_CFU = 0;
+  reg  [B_depth+1:0]  B_index_CFU = 0;
+  reg  [C_depth+1:0]  C_index_CFU = 0;
 
-  wire [15:0]     A_index_TPU;
-  wire [15:0]     B_index_TPU;
-  wire [15:0]     C_index_TPU;
+  wire [A_depth+1:0]  A_index_TPU;
+  wire [B_depth+1:0]  B_index_TPU;
+  wire [C_depth+1:0]  C_index_TPU;
 
-  wire            cmd_pulse;
-  wire signed [31:0] B_offset;
+  wire                cmd_pulse;
+  wire signed [31:0]  B_offset;
 
   assign K = cmd_inputs_0[15:0];
   assign B_offset = cmd_inputs_1;
@@ -82,7 +85,7 @@ module Cfu (
 
 
   global_buffer #(
-      .ADDR_BITS(14),
+      .ADDR_BITS(A_depth),
       .DATA_BITS(8)
   )
   gbuff_A(
@@ -95,8 +98,8 @@ module Cfu (
   );
 
   global_buffer #(
-      .ADDR_BITS(14),
-      .DATA_BITS(8)
+      .ADDR_BITS(B_depth),
+      .DATA_BITS(9)
   ) gbuff_B(
       .clk(clk),
       .wr_en(B_wr_en),
@@ -108,7 +111,7 @@ module Cfu (
 
 
   global_buffer #(
-      .ADDR_BITS(12),
+      .ADDR_BITS(C_depth),
       .DATA_BITS(32)
   ) gbuff_C(
       .clk(clk),
@@ -217,9 +220,6 @@ module Cfu (
   end
 
   reg [31:0] counter = 0;
-  assign A_index_w = cur_state == STATE_EXEC ? A_index_TPU: A_index_CFU;
-  assign B_index_w = cur_state == STATE_EXEC ? B_index_TPU: B_index_CFU;
-  assign C_index_w = cur_state == STATE_EXEC ? C_index_TPU: C_index_CFU;
 
   always @(*) begin
     if (opcode == OP_READ_MEM) begin
@@ -239,7 +239,7 @@ module Cfu (
   end
 
   always @(*) begin
-    if (cur_state == STATE_IDLE && opcode == OP_WRITE_MEM && cmd_pulse) begin
+    if (opcode == OP_WRITE_MEM && cmd_pulse) begin
       if (funct_id == 0) begin
         A_wr_en = 1;
         B_wr_en = 0;
@@ -261,9 +261,9 @@ module Cfu (
   end
 
   always @(*) begin
-    if (cur_state == STATE_IDLE && opcode == OP_WRITE_MEM) begin
+    if (opcode == OP_WRITE_MEM && cmd_pulse) begin
       A_data_in = cmd_inputs_1;
-      B_data_in = cmd_inputs_1;
+      B_data_in = {27'd0, (cmd_inputs_1 == 32'd1024 ? 1'b0:1'b1), cmd_inputs_1[7:0]};
     end
     else begin
       A_data_in = 0;
@@ -271,10 +271,14 @@ module Cfu (
     end
   end
 
+  assign A_index_w = cur_state == STATE_EXEC ? A_index_TPU: A_index_CFU;
+  assign B_index_w = cur_state == STATE_EXEC ? B_index_TPU: B_index_CFU;
+  assign C_index_w = cur_state == STATE_EXEC ? C_index_TPU: C_index_CFU;
+
   always @(*) begin
-    A_index_CFU = cmd_inputs_0[15:0];
-    B_index_CFU = cmd_inputs_0[15:0];
-    C_index_CFU = cmd_inputs_0[15:0];
+    A_index_CFU = cmd_inputs_0[A_depth+1:0];
+    B_index_CFU = cmd_inputs_0[B_depth+1:0];
+    C_index_CFU = cmd_inputs_0[C_depth+1:0];
   end
 
 

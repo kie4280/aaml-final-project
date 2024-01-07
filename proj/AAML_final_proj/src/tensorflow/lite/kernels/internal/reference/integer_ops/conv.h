@@ -93,7 +93,7 @@ int cfu_mul(std::array<int32_t, max_M * max_N>& C,
           const int row = col_offset + j;
           int val;
           if (row >= n) {
-            val = 0;
+            val = 1024;
           } else {
             val = BT[row * k + i];
           }
@@ -250,12 +250,12 @@ inline void ConvPerChannel(
 
     unsigned my_start = perf_get_mcycle();
     // doing the conv using matrix multiply
-    matrixMult<MAX_M, MAX_K, MAX_N>(unrolled_output, unrolled_weight,
-                                    unrolled_input, weight_h, weight_w, input_h,
-                                    input_offset);
-    // cfu_mul<MAX_M, MAX_K, MAX_N>(unrolled_output, unrolled_weight,
-    //                              unrolled_input, weight_h, weight_w, input_h,
-    //                              input_offset);
+    // matrixMult<MAX_M, MAX_K, MAX_N>(unrolled_output, unrolled_weight,
+    //                                 unrolled_input, weight_h, weight_w, input_h,
+    //                                 input_offset);
+    cfu_mul<MAX_M, MAX_K, MAX_N>(unrolled_output, unrolled_weight,
+                                 unrolled_input, weight_h, weight_w, input_h,
+                                 input_offset);
     unsigned my_finish = perf_get_mcycle();
     my_cycles += (my_finish - my_start);
 

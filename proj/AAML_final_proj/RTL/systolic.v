@@ -1,34 +1,36 @@
-module SystolicArray(
-  input wire         clk,
-  input wire [15:0]  K,
-  input [31:0]       B_offset,
-  output reg [15:0]  A_index,
-  input wire [31:0]  A_data,
-  output reg [15:0]  B_index,
-  input wire [31:0]  B_data,
-  output reg [15:0]  C_index,
-  output reg [127:0] C_data_out,
-  output wire        C_wr_en,
-  input  wire        enable,
-  output reg         busy
+module SystolicArray 
+#(parameter A_bits=8, parameter A_depth=14, parameter B_bits=9, 
+  parameter B_depth=14, parameter C_depth=2, parameter ar_size=4)
+(
+  input wire                clk,
+  input wire [15:0]         K,
+  input      [31:0]         B_offset,
+  output reg [A_depth-1:0]  A_index,
+  input wire [4*A_bits-1:0] A_data,
+  output reg [B_depth-1:0]  B_index,
+  input wire [4*B_bits-1:0] B_data,
+  output reg [C_depth-1:0]  C_index,
+  output reg [127:0]        C_data_out,
+  output wire               C_wr_en,
+  input  wire               enable,
+  output reg                busy
 );
 
-parameter ar_size = 4;
 
-parameter STATE_IDLE       = 0;
-parameter STATE_BUSY       = 1;
-parameter STATE_WRITE      = 2;
+localparam STATE_IDLE       = 0;
+localparam STATE_BUSY       = 1;
+localparam STATE_WRITE      = 2;
 
 reg [15:0] counter;
 reg [15:0] counter_stop;
 reg [2:0] cur_state = STATE_IDLE;
 reg [2:0] next_state = STATE_IDLE;
 
-wire [7:0] inter_row [0:ar_size][0:ar_size-1];
-wire [7:0] inter_col [0:ar_size-1][0:ar_size];
+wire [B_bits-1:0] inter_row [0:ar_size][0:ar_size-1];
+wire [A_bits-1:0] inter_col [0:ar_size-1][0:ar_size];
+reg [B_bits-1:0] top_data [0:ar_size-1][0:ar_size-1];
+reg [A_bits-1:0] left_data [0:ar_size-1][0:ar_size-1];
 wire [31:0] results [0:ar_size][0:ar_size];
-reg [7:0] top_data [0:ar_size-1][0:ar_size-1];
-reg [7:0] left_data [0:ar_size-1][0:ar_size-1];
 
 reg PE_clear = 1;
 reg PE_enable = 1;
@@ -114,8 +116,8 @@ integer ai;
 
 always @(*) begin
   for (ai=0; ai < ar_size; ai=ai+1) begin
-    top_data[ai][ai] = (counter <= K ? B_data[ai*8 +: 8] : 8'd0);
-    left_data[ai][ai] = (counter <= K ? A_data[ai*8 +: 8] : 8'd0);
+    top_data[ai][ai] = (counter <= K ? B_data[ai*B_bits +: B_bits] : 0);
+    left_data[ai][ai] = (counter <= K ? A_data[ai*A_bits +: A_bits] : 0);
   end
 
 end
@@ -134,7 +136,7 @@ case (cur_state)
   end
 
   STATE_BUSY: begin
-    counter_stop = K + 7;
+    counter_stop = K + (2*ar_size - 1);
     if (counter >= counter_stop) begin
       next_state = STATE_WRITE;
     end
@@ -142,13 +144,16 @@ case (cur_state)
   end
 
   STATE_WRITE: begin
-    counter_stop = 3;
+    counter_stop = ar_size-1;
     if (counter >= counter_stop) begin
       next_state = STATE_IDLE;
     end
     else next_state = STATE_WRITE;
   end
-  default:;
+  default: begin
+    next_state = STATE_IDLE;
+    counter_stop = 0;
+  end
 
 endcase
 end
@@ -190,20 +195,20 @@ end
 endmodule
 
 
-module PE(
+module PE #(parameter A_bits=8, parameter B_bits=9)(
   input wire clk,
   input wire clear,
   input wire enable,
-  input wire signed [31:0] B_offset,
-  input wire signed [7:0] left,
-  input wire signed [7:0] top,
-  output reg signed [7:0] right,
-  output reg signed [7:0] bottom,
-  output reg signed [31:0] result
+  input wire signed [31:0]       B_offset,
+  input wire        [A_bits-1:0] left,
+  input wire        [B_bits-1:0] top,
+  output reg        [A_bits-1:0] right,
+  output reg        [B_bits-1:0] bottom,
+  output reg signed [31:0]       result
 ); 
 
 wire signed [31:0] mul;
-assign mul = left * (top + B_offset);
+assign mul = $signed(left) * ($signed(top[B_bits-2:0]) + B_offset);
 
 always @(posedge clk) begin
   if (clear == 1) begin
@@ -214,7 +219,8 @@ always @(posedge clk) begin
   else if (enable) begin
     right <= left;
     bottom <= top;
-    result <= result + mul;
+    if (top[B_bits-1]) result <= result + mul;
+    else result <= result;
   end
 end
 endmodule
