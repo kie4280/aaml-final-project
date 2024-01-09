@@ -14,7 +14,7 @@ sudo make load BUILD_JOBS=4 TTY=/dev/ttyUSB1
 
 - Note
 
-The include path in cfu.v is absoulte path. Relative path doesn't play well on my system. If you want to build plase remember to change it!
+The include path in cfu.v is absoulte path. Relative path doesn't play well on my system. If you want to build please remember to change it!
 
 ## Members
 
